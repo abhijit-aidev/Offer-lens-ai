@@ -24,25 +24,25 @@ def generate_interactive_graph_html(
         node_type = node.get("type", "Unknown")
         label = node.get("name", str(raw_id))
 
-        # Color-coding according to entity type
+        # Color-coding according to entity type (Editorial Palette: Burgundy #702632, Rose #B77C82, Beige #EDE3D2)
         if "Offer" in node.get("labels", []) or node_type == "Offer":
-            color = {"background": "#3B82F6", "border": "#1D4ED8", "highlight": "#60A5FA"}
+            color = {"background": "#702632", "border": "#4A1721", "highlight": "#B77C82"}
             shape = "box"
             size = 25
         elif "Company" in node.get("labels", []) or node_type == "Company":
-            color = {"background": "#10B981", "border": "#047857", "highlight": "#34D399"}
+            color = {"background": "#EDE3D2", "border": "#702632", "highlight": "#D8C9B7"}
             shape = "ellipse"
-            size = 20
-        elif "ContactPerson" in node.get("labels", []) or node_type == "ContactPerson":
-            color = {"background": "#F59E0B", "border": "#B45309", "highlight": "#FBBF24"}
-            shape = "diamond"
             size = 22
+        elif "ContactPerson" in node.get("labels", []) or node_type == "ContactPerson":
+            color = {"background": "#B77C82", "border": "#4A1721", "highlight": "#D8C9B7"}
+            shape = "diamond"
+            size = 24
         elif "Domain" in node.get("labels", []) or node_type == "Domain":
-            color = {"background": "#8B5CF6", "border": "#6D28D9", "highlight": "#A78BFA"}
+            color = {"background": "#4A1721", "border": "#292320", "highlight": "#702632"}
             shape = "dot"
             size = 18
         else:
-            color = {"background": "#9CA3AF", "border": "#4B5563", "highlight": "#D1D5DB"}
+            color = {"background": "#EDE3D2", "border": "#D8C9B7", "highlight": "#B77C82"}
             shape = "dot"
             size = 15
 
@@ -52,7 +52,7 @@ def generate_interactive_graph_html(
             "title": f"Type: {node_type}<br>Name: {label}",
             "color": color,
             "shape": shape,
-            "font": {"color": "#FFFFFF" if shape in ("box", "ellipse") else "#1F2937", "size": 13, "face": "Helvetica"},
+            "font": {"color": "#FFFFFF" if shape in ("box", "diamond", "dot") and color["background"] != "#EDE3D2" else "#292320", "size": 12, "face": "Helvetica, Arial, sans-serif"},
             "margin": 10,
         })
 
@@ -68,8 +68,8 @@ def generate_interactive_graph_html(
                 "to": node_id_map[target_id],
                 "label": edge_type,
                 "arrows": "to",
-                "color": {"color": "#64748B", "highlight": "#3B82F6"},
-                "font": {"size": 10, "align": "middle", "color": "#475569"},
+                "color": {"color": "#B77C82", "highlight": "#702632"},
+                "font": {"size": 10, "align": "middle", "color": "#746A61", "face": "Helvetica, Arial, sans-serif"},
             })
 
     nodes_json = json.dumps(vis_nodes)
@@ -84,40 +84,47 @@ def generate_interactive_graph_html(
         #network-canvas {{
           width: 100%;
           height: {height}px;
-          border: 1px solid #E2E8F0;
+          border: 1px solid #D8C9B7;
           border-radius: 8px;
-          background: #F8FAFC;
+          background: #F7F2E8;
         }}
         .legend {{
           display: flex;
-          gap: 16px;
-          padding: 8px 12px;
-          background: #FFFFFF;
-          border-bottom: 1px solid #E2E8F0;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          font-size: 12px;
+          gap: 20px;
+          padding: 10px 16px;
+          background: #EDE3D2;
+          border-bottom: 1px solid #D8C9B7;
+          border-top-left-radius: 8px;
+          border-top-right-radius: 8px;
+          font-family: 'Playfair Display', Georgia, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          font-size: 11px;
+          color: #746A61;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
         }}
         .legend-item {{
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 7px;
         }}
         .legend-badge {{
-          width: 12px;
-          height: 12px;
-          border-radius: 3px;
+          width: 11px;
+          height: 11px;
+          border-radius: 2px;
         }}
       </style>
     </head>
     <body>
       <div class="legend">
-        <div class="legend-item"><span class="legend-badge" style="background: #3B82F6;"></span> <strong>Offer</strong></div>
-        <div class="legend-item"><span class="legend-badge" style="background: #10B981; border-radius: 50%;"></span> <strong>Company</strong></div>
-        <div class="legend-item"><span class="legend-badge" style="background: #F59E0B; transform: rotate(45deg);"></span> <strong>Contact Person</strong></div>
-        <div class="legend-item"><span class="legend-badge" style="background: #8B5CF6; border-radius: 50%;"></span> <strong>Domain</strong></div>
+        <div class="legend-item"><span class="legend-badge" style="background: #702632;"></span> <strong>Offer</strong></div>
+        <div class="legend-item"><span class="legend-badge" style="background: #EDE3D2; border: 1px solid #702632; border-radius: 50%;"></span> <strong>Company</strong></div>
+        <div class="legend-item"><span class="legend-badge" style="background: #B77C82; transform: rotate(45deg);"></span> <strong>Contact Person</strong></div>
+        <div class="legend-item"><span class="legend-badge" style="background: #4A1721; border-radius: 50%;"></span> <strong>Domain</strong></div>
       </div>
       <div id="network-canvas"></div>
       <script type="text/javascript">
+
+
         var container = document.getElementById('network-canvas');
         var data = {{
           nodes: new vis.DataSet({nodes_json}),

@@ -1,12 +1,20 @@
 """
-Integration tests for Neo4j queries in OfferLens AI.
-Tests real Neo4j queries if an active Neo4j database is reachable.
+Integration & Unit tests for Neo4j queries in OfferLens AI.
+Clearly distinguishes offline unit tests from live database integration tests.
 """
 
 import pytest
 from src.db import Neo4jConnection
 from src.config import Neo4jConfig
-from src.repository import OfferRepository
+from src.repository import (
+    OfferRepository,
+    CYPHER_CREATE_CONSTRAINTS,
+    CYPHER_INSERT_OFFER,
+    CYPHER_FIND_BY_SHARED_CONTACT,
+    CYPHER_FIND_BY_SHARED_DOMAIN,
+    CYPHER_FIND_BY_CONTACT_EMAILS,
+    CYPHER_FIND_BY_DOMAINS,
+)
 from src.models import JobOffer, Company, ContactPerson
 
 
@@ -14,7 +22,11 @@ from src.models import JobOffer, Company, ContactPerson
 connected, conn_msg = Neo4jConnection.test_connection()
 
 
-@pytest.mark.skipif(not connected, reason=f"Neo4j database offline: {conn_msg}")
+# ----------------------------------------------------------------------
+# LIVE INTEGRATION TESTS (Run only if active Neo4j cluster is reachable)
+# ----------------------------------------------------------------------
+
+@pytest.mark.skipif(not connected, reason=f"Live Neo4j database offline: {conn_msg}")
 def test_real_neo4j_graph_connectivity():
     """
     Live Neo4j graph test verifying that:
@@ -53,6 +65,10 @@ def test_real_neo4j_graph_connectivity():
     assert len(conn_c) == 0, "OFFER-C must remain completely isolated from A and B"
 
 
+# ----------------------------------------------------------------------
+# OFFLINE UNIT TESTS (Never require a running database server)
+# ----------------------------------------------------------------------
+
 def test_repository_models():
     """Verify repository data structures and query parameter formatting without database."""
     offer = JobOffer(
@@ -63,3 +79,39 @@ def test_repository_models():
     )
     assert offer.company.name == "Test Corp"
     assert offer.contacts[0].email == "test@test.org"
+
+
+def test_offline_connection_diagnostics():
+    """Verify connection diagnostic function safely handles an unreachable host without crashing."""
+    diag = Neo4jConnection.get_diagnostics("bolt://localhost:9999", "neo4j", "dummy")
+    assert diag["connected"] is False
+    assert "target_uri" in diag
+    assert "bolt://localhost:9999" == diag["target_uri"]
+    assert "message" in diag
+    assert len(diag["message"]) > 0
+
+
+def test_cypher_schema_consistency():
+    """
+    Verify all Cypher query constants strictly conform to the unified graph schema:
+    - Node labels: Offer, Company, Domain, ContactPerson
+    - Relationships: OFFERED_BY, USES_DOMAIN, HAS_CONTACT
+    - Parameterization: Uses $parameters rather than raw string interpolation
+    """
+    # Verify label consistency in schema constraints
+    constraints_str = " ".join(CYPHER_CREATE_CONSTRAINTS)
+    assert ":Offer" in constraints_str
+    assert ":Company" in constraints_str
+    assert ":Domain" in constraints_str
+    assert ":ContactPerson" in constraints_str
+
+    # Verify relationships in insertion query
+    assert "OFFERED_BY" in CYPHER_INSERT_OFFER
+    assert "USES_DOMAIN" in CYPHER_INSERT_OFFER
+    assert "HAS_CONTACT" in CYPHER_INSERT_OFFER
+
+    # Verify parameterization (prevents Cypher injection)
+    assert "$offer_id" in CYPHER_FIND_BY_SHARED_CONTACT
+    assert "$offer_id" in CYPHER_FIND_BY_SHARED_DOMAIN
+    assert "$emails" in CYPHER_FIND_BY_CONTACT_EMAILS
+    assert "$domains" in CYPHER_FIND_BY_DOMAINS

@@ -1,11 +1,16 @@
 """
 Tests for rule-based extraction in OfferLens AI.
+Validates entity extraction for ground-truth offers, input validation,
+and handling of missing or malformed inputs.
 """
 
+import pytest
 from src.extractor import (
     extract_emails,
     extract_domains,
     extract_company_name,
+    extract_job_title,
+    extract_salary,
     parse_job_offer_from_text,
 )
 
@@ -44,7 +49,7 @@ def test_offer_c_extraction():
     Company: Summit Digital
     Website: summit-example.com
     Contact recruiter: jobs@summit-example.com
-    Role: Full Stack Engineer
+    Role: Full Stack Developer
     """
     offer = parse_job_offer_from_text(text, offer_id="OFFER-C")
     assert offer.id == "OFFER-C"
@@ -66,3 +71,37 @@ def test_shared_contact_detection_in_data():
     # C does not share contact with A or B
     shared_ac = set(emails_a).intersection(set(emails_c))
     assert len(shared_ac) == 0
+
+
+def test_empty_and_whitespace_input():
+    """Verify parser handles empty or whitespace-only inputs safely."""
+    offer = parse_job_offer_from_text("   \n\t  ")
+    assert offer.id.startswith("OFFER-")
+    assert offer.company.name == "Unknown Company"
+    assert offer.company.domain is None
+    assert len(offer.contacts) == 0
+    assert offer.salary is None
+
+
+def test_missing_values_graceful_handling():
+    """Verify text with minimal or missing fields creates valid models."""
+    text = "Join us as a Junior Associate. We are starting next month."
+    offer = parse_job_offer_from_text(text)
+    assert offer.title is not None
+    assert offer.salary is None
+    assert offer.contacts == []
+    assert offer.company.domain is None
+
+
+def test_explicit_overrides_precedence():
+    """Verify caller can provide explicit company or domain overrides."""
+    text = "Contact: test@other.com"
+    offer = parse_job_offer_from_text(
+        text,
+        offer_id="EXPLICIT-01",
+        explicit_company="Custom Corp",
+        explicit_domain="customcorp.io",
+    )
+    assert offer.id == "EXPLICIT-01"
+    assert offer.company.name == "Custom Corp"
+    assert offer.company.domain == "customcorp.io"

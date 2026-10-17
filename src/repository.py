@@ -62,6 +62,28 @@ RETURN target.id AS target_offer_id,
        'Offers ' + source.id + ' and ' + target.id + ' are connected through the shared domain: ' + domain.name AS explanation
 """
 
+CYPHER_FIND_BY_CONTACT_EMAILS = """
+MATCH (target:Offer)-[:HAS_CONTACT]->(contact:ContactPerson)
+WHERE contact.email IN $emails AND ($exclude_id IS NULL OR target.id <> $exclude_id)
+MATCH (target)-[:OFFERED_BY]->(target_company:Company)
+RETURN target.id AS target_offer_id,
+       target_company.name AS target_company_name,
+       'SHARED_CONTACT' AS connection_type,
+       contact.email AS shared_value,
+       'Directly shares contact ' + contact.email + ' with ' + target.id + ' (' + target_company.name + ')' AS explanation
+"""
+
+CYPHER_FIND_BY_DOMAINS = """
+MATCH (target:Offer)-[:OFFERED_BY]->(c:Company)-[:USES_DOMAIN]->(domain:Domain)
+WHERE domain.name IN $domains AND ($exclude_id IS NULL OR target.id <> $exclude_id)
+RETURN target.id AS target_offer_id,
+       c.name AS target_company_name,
+       'SHARED_DOMAIN' AS connection_type,
+       domain.name AS shared_value,
+       'Directly shares domain ' + domain.name + ' with ' + target.id + ' (' + c.name + ')' AS explanation
+"""
+
+
 CYPHER_LIST_OFFERS = """
 MATCH (o:Offer)-[:OFFERED_BY]->(c:Company)
 OPTIONAL MATCH (o)-[:HAS_CONTACT]->(p:ContactPerson)
@@ -231,6 +253,67 @@ class OfferRepository:
                     )
 
         return connections
+
+    def find_related_by_entities(
+        self,
+        emails: List[str],
+        domains: List[str],
+        source_id: str = "NEW-OFFER",
+        exclude_offer_id: Optional[str] = None,
+    ) -> List[GraphConnection]:
+        """
+        Discover existing offers that share any of the extracted emails or domains.
+        Allows immediate graph cross-referencing even for newly pasted offers.
+        """
+        connections: List[GraphConnection] = []
+        seen_keys = set()
+
+        with self.driver.session(database=self.database) as session:
+            # 1. Search shared emails
+            if emails:
+                res_emails = session.run(
+                    CYPHER_FIND_BY_CONTACT_EMAILS,
+                    {"emails": emails, "exclude_id": exclude_offer_id},
+                )
+                for record in res_emails:
+                    key = (record["target_offer_id"], record["connection_type"], record["shared_value"])
+                    if key not in seen_keys:
+                        seen_keys.add(key)
+                        connections.append(
+                            GraphConnection(
+                                source_offer_id=source_id,
+                                target_offer_id=record["target_offer_id"],
+                                target_company_name=record["target_company_name"],
+                                connection_type=record["connection_type"],
+                                shared_value=record["shared_value"],
+                                explanation=record["explanation"],
+                            )
+                        )
+
+            # 2. Search shared domains
+            valid_domains = [d for d in domains if d]
+            if valid_domains:
+                res_dom = session.run(
+                    CYPHER_FIND_BY_DOMAINS,
+                    {"domains": valid_domains, "exclude_id": exclude_offer_id},
+                )
+                for record in res_dom:
+                    key = (record["target_offer_id"], record["connection_type"], record["shared_value"])
+                    if key not in seen_keys:
+                        seen_keys.add(key)
+                        connections.append(
+                            GraphConnection(
+                                source_offer_id=source_id,
+                                target_offer_id=record["target_offer_id"],
+                                target_company_name=record["target_company_name"],
+                                connection_type=record["connection_type"],
+                                shared_value=record["shared_value"],
+                                explanation=record["explanation"],
+                            )
+                        )
+
+        return connections
+
 
     def get_graph_elements(self) -> Dict[str, Any]:
         """Fetch all graph nodes and edges for visualization."""
