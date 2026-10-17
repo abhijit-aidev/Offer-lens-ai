@@ -1,0 +1,14 @@
+# OfferLens AI - .gitignore
+.env
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+.DS_Store
+.idea/
+.vscode/
+*.log
