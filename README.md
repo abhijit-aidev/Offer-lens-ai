@@ -12,7 +12,7 @@ When candidates or organizations receive multiple job offers or recruiting inqui
 **OfferLens AI** models job offers as an interconnected **knowledge graph** in Neo4j. By mapping offers, companies, recruiter emails, and domains as graph nodes, OfferLens AI executes real Cypher pattern-matching queries to instantly expose shared contacts and hidden linkages.
 
 ---
-
+##
 ## 🧩 The Ground Truth Dataset
 
 OfferLens AI comes seeded with three fictional job offers designed to test graph relationship queries:
