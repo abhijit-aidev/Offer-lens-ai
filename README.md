@@ -1,7 +1,7 @@
 # OfferLens AI 🔍
 
 > **Graph-Powered Job Offer Intelligence, Recruiter Cross-Referencing & Overlap Detection**  
-> Built for Hackathon MVP with **Python**, **Streamlit**, **Neo4j**, **Pydantic**, and **python-dotenv**. Zero paid AI API dependencies. 
+> Built for Hackathon MVP with **Python**, **Streamlit**, **Neo4j**, **Pydantic**, and **python-dotenv**. Zero paid AI API dependencies.
 
 ---
 
